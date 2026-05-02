@@ -1,0 +1,42 @@
+# Combined Phase 2 variant.
+# Uses adaptive modality gating at the fusion stage and a FEM block on the
+# final P3 small-object branch.
+
+nc: 8
+depth_multiple: 0.33
+width_multiple: 0.50
+
+anchors:
+  - [10,13, 16,30, 33,23]
+
+l1: 4
+l2: 8
+c1: 128
+c2: 512
+
+backbone:
+  [[-1, 1, MFGate, [3]],
+   [-1, 1, Conv, [128, 3, 2]],
+   [-1, 3, C3, [128]],
+   [-1, 1, Conv, [256, 3, 2]],
+   [-1, 9, C3, [256]],
+   [-1, 1, Conv, [512, 3, 2]],
+   [-1, 9, C3, [512]],
+   [-1, 1, Conv, [1024, 3, 2]],
+   [-1, 1, SPP, [1024, [5, 9, 13]]],
+   [-1, 3, C3, [1024, False]],
+  ]
+
+head:
+  [[-1, 1, Conv, [512, 1, 1]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 6], 1, Concat, [1]],
+   [-1, 3, C3, [512, False]],
+
+   [-1, 1, Conv, [256, 1, 1]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 4], 1, Concat, [1]],
+   [-1, 3, C3, [256, False]],
+   [-1, 1, FEM, [128]],
+   [[18], 1, Detect, [nc, anchors]],
+  ]

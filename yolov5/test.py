@@ -253,48 +253,29 @@ def test(data,
     # Compute statistics
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats) and stats[0].any():
-        # after:
-        out = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
-        # print("DEBUG ▶ ap_per_class returned:", out)
-        p, r, ap50, ap, *_, ap_class = out
+        tp, fp, p, r, f1, ap, ap_class = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
 
+        p = np.asarray(p)
+        r = np.asarray(r)
+        ap = np.asarray(ap)
+        ap_class = np.asarray(ap_class, dtype=int)
 
-        if not hasattr(ap, 'ndim'):  
-            ap = np.array([ap])
-        
-        if hasattr(ap, "cpu"):
-            ap = ap.detach().cpu().numpy()
-
-# now ap is an ndarray
         if ap.ndim == 0:
-    # fully scalar → treat as single-class
-            ap = ap.reshape(1)
-            ap50 = ap.copy()
+            ap = ap.reshape(1, 1)
         elif ap.ndim == 1:
-    # per-class at a single IoU threshold
-            ap50 = ap.copy()
-        else:
-    # per-class at multiple IoU thresholds → slice and mean
-            ap50 = ap[:, 0]
-            ap   = ap.mean(axis=1)
+            ap = ap.reshape(-1, 1)
 
-# build your map of class → AP
-        maps={}
-        print(f"DEBUG → ap.ndim={ap.ndim}, ap.shape={ap.shape},            ap_class={ap_class}")
+        ap50 = ap[:, 0]
+        ap = ap.mean(axis=1)
 
-        total_ap = ap.shape[0] if hasattr(ap, 'shape') else len(ap)
-        n= min(len(ap_class), ap.shape[0])
-        for i in range(n):
-             c = ap_class[i]
-             maps[c] = float(ap[i])
-        p = np.array(p) if not hasattr(p, "ndim") else p
-        r = np.array(r) if not hasattr(r, "ndim") else r
-        mp     = float(p.mean())
-        mr     = float(r.mean())
-        mAP50  = float(ap50.mean())
-        mAP    = float(ap.mean())
-        # return mp, mr, mAP50, mAP, maps
-        # mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
+        maps = {}
+        for i, c in enumerate(ap_class[: ap.shape[0]]):
+            maps[int(c)] = float(ap[i])
+
+        mp = float(p.mean()) if p.size else 0.0
+        mr = float(r.mean()) if r.size else 0.0
+        map50 = float(ap50.mean()) if ap50.size else 0.0
+        map = float(ap.mean()) if ap.size else 0.0
         nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
     else:
         nt = torch.zeros(1)

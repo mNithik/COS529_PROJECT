@@ -1,233 +1,132 @@
 # COS529 Advanced Computer Vision - Vehicle Detection in Aerial Imagery
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-1.8+-red.svg)](https://pytorch.org/)
-[![YOLOv5](https://img.shields.io/badge/YOLOv5-v7.0-green.svg)](https://github.com/ultralytics/yolov5)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Multimodal aerial vehicle detection project built around RGB-IR VEDAI experiments and a custom YOLO-based fusion model.
 
-## 🎯 Project Overview
+## Project Overview
 
-This project implements **multi-modal vehicle detection in aerial imagery** using YOLOv5 on the VEDAI (Vehicle Detection in Aerial Imagery) dataset. The system processes both **color (optical)** and **infrared** imagery to detect and classify various vehicle types in aerial surveillance scenarios.
+This project studies vehicle detection in aerial imagery using both **color (RGB)** and **infrared (IR)** inputs. The work started from a custom YOLOv5-based multimodal detector and evolved into a reproducible experimental pipeline with modality ablations and targeted fusion improvements.
 
-### Key Features
-- ✅ **Multi-modal Processing**: Color and Infrared image fusion
-- ✅ **Multi-class Detection**: 1, 8, and 9-class vehicle detection configurations
-- ✅ **Aerial Imagery Optimization**: Specialized for small object detection in aerial views
-- ✅ **Cross-validation**: 10-fold validation for robust model evaluation
-- ✅ **Production Ready**: Complete training pipeline with configuration management
+Current focus areas:
+- Multimodal RGB-IR vehicle detection on VEDAI
+- Small-object detection in aerial imagery
+- Feature-level fusion and adaptive modality gating
+- Reproducible training and evaluation from WSL Ubuntu
 
-## 🚀 Quick Start
+## Additional Docs
 
-### Prerequisites
-- Python 3.8+
-- CUDA-capable GPU (recommended)
-- 8GB+ RAM
-- 10GB+ disk space
+- [SETUP.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/SETUP.md)
+- [USAGE.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/USAGE.md)
+- [RESULTS.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/RESULTS.md)
+- [README_COS529.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/yolov5/README_COS529.md)
 
-### Installation
+## Phase 1
 
-```bash
-# Clone the repository
-git clone <your-repo-url>
-cd COS529_PROJECT
+Phase 1 is the reproducibility cleanup pass. The goal is to make the multimodal baseline runnable from a clean WSL Ubuntu environment before changing the research method.
 
-# Install dependencies
-cd yolov5
-pip install -r requirements.txt
+### What was standardized
 
-# Verify installation
-python detect.py --weights yolov5s.pt --source data/images/bus.jpg
-```
+- Portable VEDAI manifest generation in [prepare_vedai_manifests.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/prepare_vedai_manifests.py)
+- Sanitized single-class Phase 1 dataset generation in [prepare_phase1_dataset.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/prepare_phase1_dataset.py)
+- WSL setup script in [setup_wsl.sh](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/setup_wsl.sh)
+- Canonical Phase 1 train script in [run_phase1_train.sh](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/run_phase1_train.sh)
+- Canonical dataset YAML in [vedai_phase1.yaml](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/yolov5/data/vedai_phase1.yaml)
+- Dataset loader path resolution no longer depends on old Colab absolute paths
 
-### Quick Training
+### WSL quick start
+
+From the repo root:
 
 ```bash
-# Train on single-class vehicle detection
-python train.py --data ../data/vedai_car.yaml --weights yolov5m.pt --img 512 --epochs 50
-
-# Train on multi-class vehicle detection (8 classes)
-python train.py --data ../data/vedai8.yaml --weights yolov5m.pt --img 512 --epochs 50
-
-# Use the provided training script
-bash run_train.sh
+bash scripts/setup_wsl.sh
+source .venv/bin/activate
+bash scripts/run_phase1_train.sh
 ```
 
-## 📊 Dataset Information
-
-### VEDAI Dataset
-- **Total Images**: 1,090+ aerial images
-- **Modalities**: Color (co) and Infrared (ir)
-- **Image Resolution**: 512×512 pixels (original), 1024×1024 (resized)
-- **Annotations**: YOLO format bounding boxes
-- **Vehicle Classes**: Car, Pickup, Camping Car, Truck, Tractor, Boat, Van, Plane
-
-### Dataset Structure
-```
-data/
-├── VEDAI/                    # Original dataset (512×512)
-│   ├── images/               # PNG images (co + ir modalities)
-│   ├── fold01_write_test_fixed.txt  # Training split
-│   ├── fold02_write_test_fixed.txt  # Validation split
-│   └── fold03_write_test_fixed.txt  # Test split
-└── VEDAI_1024/               # Resized dataset (1024×1024)
-    ├── images/               # Resized PNG images
-    └── labels/               # YOLO format annotations
-```
-
-## 🏗️ Architecture
-
-### Model Configurations
-- **YOLOv5m**: Medium model (21.2M parameters) - Primary choice
-- **YOLOv5s**: Small model (7.2M parameters) - Fast inference
-- **YOLOv5l**: Large model (46.5M parameters) - High accuracy
-
-### Multi-Modal Processing
-1. **Data Preprocessing**: Convert polygon annotations to YOLO format
-2. **Modality Handling**: Process both color and infrared channels
-3. **Training**: Standard YOLOv5 training with aerial-specific augmentations
-4. **Inference**: Multi-modal vehicle detection and classification
-
-## 📈 Performance Metrics
-
-### Model Performance (VEDAI Dataset)
-| Model | mAP@0.5 | mAP@0.5:0.95 | Speed (ms) | Parameters |
-|-------|---------|--------------|------------|------------|
-| YOLOv5s | 0.XX | 0.XX | XX | 7.2M |
-| YOLOv5m | 0.XX | 0.XX | XX | 21.2M |
-| YOLOv5l | 0.XX | 0.XX | XX | 46.5M |
-
-*Note: Performance metrics will be updated after training completion*
-
-## 🛠️ Usage
-
-### Training Custom Models
+The run script automatically prefers the full dataset at `../MultiModalFusion/data/VEDAI` if the local `data/VEDAI` folder is incomplete. You can also override the dataset root explicitly:
 
 ```bash
-# Single-class vehicle detection
-python train.py \
-    --data ../data/vedai_car.yaml \
-    --weights yolov5m.pt \
-    --img 512 \
-    --batch-size 16 \
-    --epochs 50 \
-    --device 0
-
-# Multi-class vehicle detection
-python train.py \
-    --data ../data/vedai8.yaml \
-    --weights yolov5m.pt \
-    --img 512 \
-    --batch-size 16 \
-    --epochs 50 \
-    --device 0
+export VEDAI_DATA_ROOT=/absolute/path/to/VEDAI
+bash scripts/run_phase1_train.sh
 ```
 
-### Inference
+### Current dataset caveat
+
+The checked-in `data/VEDAI` folder is only a partial copy. The complete 512x512 image-label set is available in `../MultiModalFusion/data/VEDAI`, and the Phase 1 run script is set up to use it automatically when present.
+
+## Phase 1 Modality Benchmark
+
+These are the canonical single-class `vehicle` results on the sanitized Phase 1 VEDAI setup.
+
+| Mode | Run folder | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| RGB+IR+MF | `runs/train/phase1_baseline1` | 0.8328 | 0.7872 | 0.8696 | 0.5087 |
+| RGB-only | `runs/train/phase1_rgb2` | 0.8198 | 0.7677 | 0.8564 | 0.4991 |
+| IR-only | `runs/train/phase1_ir` | 0.8235 | 0.7018 | 0.8099 | 0.4642 |
+
+Takeaway: the multimodal `RGB+IR+MF` model is stronger than both single-modality ablations on recall and mAP.
+
+### Re-running the modality experiments
 
 ```bash
-# Detect vehicles in images
-python detect.py \
-    --weights runs/train/exp/weights/best.pt \
-    --source path/to/images/ \
-    --img 512 \
-    --conf 0.25
-
-# Detect vehicles in video
-python detect.py \
-    --weights runs/train/exp/weights/best.pt \
-    --source path/to/video.mp4 \
-    --img 512 \
-    --conf 0.25
+source .venv/bin/activate
+bash scripts/run_phase1_mf.sh
+bash scripts/run_phase1_rgb.sh
+bash scripts/run_phase1_ir.sh
 ```
 
-### Validation
+## Phase 2 Architecture Study
+
+Phase 2 compares three targeted upgrades on top of the multimodal baseline:
+- `FEM`: FFCA-inspired feature enhancement on the final P3 small-object branch
+- `Gate`: adaptive modality gating at the RGB/IR fusion stage
+- `FEM + Gate`: both changes together
+
+| Model | Run folder | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Phase 1 baseline | `runs/train/phase1_baseline1` | 0.8328 | 0.7872 | 0.8696 | 0.5087 |
+| Phase 2 + FEM | `runs/train/phase2_fem` | 0.8379 | 0.7946 | 0.8766 | 0.5150 |
+| Phase 2 + Gate | `runs/train/phase2_gate1` | 0.8585 | 0.7866 | 0.8792 | 0.5181 |
+| Phase 2 + FEM + Gate | `runs/train/phase2_fem_gate` | 0.8408 | 0.7756 | 0.8701 | 0.5126 |
+
+Takeaway: both single upgrades improve on the Phase 1 multimodal baseline, and the simple adaptive gating variant is currently the strongest result. Combining `FEM` and `Gate` did not outperform `Gate` alone in this setup.
+
+### Running the Phase 2 variants
 
 ```bash
-# Validate model performance
-python val.py \
-    --weights runs/train/exp/weights/best.pt \
-    --data ../data/vedai8.yaml \
-    --img 512 \
-    --conf 0.001 \
-    --iou 0.65
+source .venv/bin/activate
+bash scripts/run_phase2_fem.sh
+bash scripts/run_phase2_gate.sh
+bash scripts/run_phase2_fem_gate.sh
 ```
 
-## 📁 Project Structure
+## Gate Visualization
 
-```
-COS529_PROJECT/
-├── README.md                          # This file
-├── LICENSE                            # MIT License
-├── convert_to_vehicle_yolo.py         # Data preprocessing script
-├── data/                              # Dataset directory
-│   ├── VEDAI/                         # Original dataset
-│   └── VEDAI_1024/                    # Resized dataset
-├── yolov5/                            # YOLOv5 implementation
-│   ├── train.py                       # Training script
-│   ├── detect.py                      # Inference script
-│   ├── val.py                         # Validation script
-│   ├── data/                          # Configuration files
-│   │   ├── vedai_car.yaml            # Single-class config
-│   │   ├── vedai8.yaml               # 8-class config
-│   │   └── vedai9.yaml               # 9-class config
-│   ├── models/                        # Model architectures
-│   ├── utils/                         # Utility functions
-│   └── requirements.txt               # Dependencies
-└── yolov5m.pt                         # Pre-trained weights
+The gate-analysis utility exports RGB / IR / gate-map / overlay panels from the saved adaptive-gating checkpoint.
+
+Script:
+- [visualize_gate_maps.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/visualize_gate_maps.py)
+
+Example command:
+
+```bash
+source .venv/bin/activate
+python scripts/visualize_gate_maps.py --count 8
 ```
 
-## 🔧 Configuration Files
+Default output directory:
+- `runs/analysis/phase2_gate1_maps`
 
-### Dataset Configurations
-- **`vedai_car.yaml`**: Single-class vehicle detection
-- **`vedai8.yaml`**: 8-class vehicle detection (Car, Pickup, Camping, Truck, Other, Tractor, Boat, Van)
-- **`vedai9.yaml`**: 9-class vehicle detection (adds Plane class)
+## Current Best Model
 
-### Training Parameters
-- **Image Size**: 512×512 pixels
-- **Batch Size**: 16 (adjustable based on GPU memory)
-- **Epochs**: 50 (configurable)
-- **Learning Rate**: Auto-scaled by YOLOv5
-- **Optimizer**: SGD with momentum
+The strongest current result is:
+- [phase2_gate1](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/runs/train/phase2_gate1)
 
-## 🎓 Academic Context
+Metrics:
+- Precision: `0.8585`
+- Recall: `0.7866`
+- mAP@0.5: `0.8792`
+- mAP@0.5:0.95: `0.5181`
 
-This project was developed as part of **COS529 Advanced Computer Vision** course, focusing on:
+## License
 
-- **Multi-modal Computer Vision**: Fusion of color and infrared imagery
-- **Small Object Detection**: Challenges in aerial vehicle detection
-- **Deep Learning**: Implementation of state-of-the-art YOLOv5 architecture
-- **Dataset Processing**: Custom annotation format conversion
-- **Model Evaluation**: Comprehensive cross-validation methodology
-
-## 📚 Technical Skills Demonstrated
-
-- **Computer Vision**: Object detection, multi-modal fusion, aerial imagery
-- **Deep Learning**: PyTorch, YOLOv5, transfer learning
-- **Data Processing**: Annotation conversion, dataset preparation
-- **Model Training**: Hyperparameter tuning, cross-validation
-- **Software Engineering**: Modular design, configuration management
-
-## 🤝 Contributing
-
-This is an academic project. For questions or suggestions, please open an issue.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Ultralytics**: For the excellent YOLOv5 implementation
-- **VEDAI Dataset**: For providing the aerial vehicle detection dataset
-- **COS529 Course**: Advanced Computer Vision course at Princeton University
-
-## 📞 Contact
-
-**AadityaNitin** - [Your Email] - [Your LinkedIn]
-
-Project Link: [Your Repository URL]
-
----
-
-*This project demonstrates advanced computer vision techniques for multi-modal vehicle detection in aerial imagery, showcasing expertise in deep learning, data processing, and model optimization.*
+This project is licensed under the MIT License. See [LICENSE](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/LICENSE).

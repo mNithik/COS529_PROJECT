@@ -378,6 +378,62 @@ def img2img_512_paths(img_paths): #zjq
     # Define ir image paths as a function of image paths
     return [x.replace('VEDAI_1024', 'VEDAI') for x in img_paths] #replace('.' + x.split('.')[-1], '.txt')
 
+
+def _normalize_manifest_entry(entry):
+    """Return a VEDAI sample id from a manifest line or image path."""
+    sample = entry.strip().replace('\\', '/')
+    if not sample:
+        return None
+    sample = Path(sample).stem
+    if sample.endswith('_co') or sample.endswith('_ir'):
+        sample = sample[:-3]
+    return sample
+
+
+def _load_manifest_image_files(manifest_path, hr_input=False):
+    """Resolve manifest entries to local RGB image paths without hard-coded roots."""
+    manifest_path = Path(manifest_path).resolve()
+    manifest_dir = manifest_path.parent
+    env_root = os.getenv('VEDAI_DATA_ROOT')
+    if env_root:
+        env_root = Path(env_root)
+    if hr_input:
+        candidates = []
+        if env_root:
+            candidates.extend([env_root / 'images', env_root.parent / 'VEDAI_1024' / 'images'])
+        candidates.extend([
+            manifest_dir / 'images',
+            manifest_dir.parent / 'VEDAI_1024' / 'images',
+        ])
+    else:
+        candidates = []
+        if env_root:
+            candidates.append(env_root / 'images')
+        candidates.extend([
+            manifest_dir / 'images',
+            manifest_dir.parent / 'VEDAI' / 'images',
+            manifest_dir.parent / 'images',
+        ])
+
+    img_root = None
+    for candidate in candidates:
+        if candidate.exists():
+            # Keep the configured path itself instead of resolving symlinks so
+            # image/label pairing stays inside the selected dataset root.
+            img_root = candidate.absolute()
+            break
+    if img_root is None:
+        raise FileNotFoundError(f'Could not locate an images directory for manifest {manifest_path}')
+
+    img_files = []
+    with open(manifest_path, 'r', encoding='utf-8') as file:
+        for raw_line in file:
+            sample = _normalize_manifest_entry(raw_line)
+            if sample is None:
+                continue
+            img_files.append(str(img_root / f'{sample}_co.png'))
+    return img_files
+
 class LoadImagesAndLabels(Dataset):  # for training/testing
     def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
                  cache_images=False, single_cls=False, stride=32, pad=0.0, prefix='',hr_input = False):
@@ -389,26 +445,14 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
-        if hr_input== False:
-            self.img_path = '/content/drive/MyDrive/MultiModalFusion/data/VEDAI/images/' #zjq the path for 512*512 images
-        else:
-            self.img_path = '/content/drive/MyDrive/MultiModalFusion/data/VEDAI_1024/images/' #zjq the path for 1024*1024 images
-
-
-        with open(path, "r") as file:
-            self.img_files = file.readlines()
-            # for i in dele:
-            #     if i+'\n' in self.img_files:
-            #         self.img_files.remove(i+'\n')
-            for j in range(len(self.img_files)):
-                self.img_files[j] = self.img_path + self.img_files[j].rstrip() + '_co.png' #self.img_files[j].rstrip() + '_co.png'  #self.img_path + self.img_files[j].rstrip() + '_co.png'
+        self.img_files = _load_manifest_image_files(path, hr_input=hr_input)
 
         # Check cache
         self.label_files = img2label_paths(self.img_files)  # labels
         self.ir_files = img2ir_paths(self.img_files)
         cache_path = Path(self.label_files[0]).parent.with_suffix('.cache')  # cached labels
         if cache_path.is_file():
-            cache = torch.load(cache_path)  # load
+            cache = torch.load(cache_path, weights_only=False)  # load
             if cache['hash'] != get_hash(self.label_files + self.img_files + self.ir_files) or 'results' not in cache:  # changed #zjq
                 cache = self.cache_labels(cache_path, prefix)  # re-cache
         else:
@@ -675,20 +719,14 @@ class LoadImagesAndLabels_sr(Dataset):  # for training/testing
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
 
-        with open(path, "r") as file:
-            self.img_files = file.readlines()
-            # for i in dele:
-            #     if i+'\n' in self.img_files:
-            #         self.img_files.remove(i+'\n')
-            for j in range(len(self.img_files)):
-                self.img_files[j] = self.img_files[j].rstrip() + '_co.png'  #self.img_path + self.img_files[j].rstrip() + '_co.png'
+        self.img_files = _load_manifest_image_files(path, hr_input=False)
 
         # Check cache
         self.label_files = img2label_paths(self.img_files)  # labels
         self.ir_files = img2ir_paths(self.img_files)
         cache_path = Path(self.label_files[0]).parent.with_suffix('.cache')  # cached labels
         if cache_path.is_file():
-            cache = torch.load(cache_path)  # load
+            cache = torch.load(cache_path, weights_only=False)  # load
             if cache['hash'] != get_hash(self.label_files + self.img_files + self.ir_files) or 'results' not in cache:  # changed #zjq
                 cache = self.cache_labels(cache_path, prefix)  # re-cache
         else:

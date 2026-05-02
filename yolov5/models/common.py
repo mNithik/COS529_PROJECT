@@ -229,6 +229,47 @@ class MF(nn.Module):# stereo attention block
 
         return out
 
+
+class MFGate(nn.Module):
+    """
+    Adaptive modality gating version of the baseline MF fusion block.
+
+    A lightweight spatial gate learns when to emphasize RGB or IR features
+    before the final channel-attended fusion.
+    """
+
+    def __init__(self, channels):
+        super(MFGate, self).__init__()
+        self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
+        self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
+        self.bottleneck1 = nn.Conv2d(1, 16, 3, 1, 1, bias=False)
+        self.bottleneck2 = nn.Conv2d(channels, 48, 3, 1, 1, bias=False)
+        self.gate = nn.Sequential(
+            Conv(64, 32, 3, 1),
+            nn.Conv2d(32, 1, 1, 1, 0, bias=True),
+            nn.Sigmoid(),
+        )
+        self.se = SE_Block(64, 16)
+        self.last_gate = None
+
+    def forward(self, x):
+        x_left_ori, x_right_ori = x[0], x[1]
+        x_left = x_left_ori * 0.5
+        x_right = x_right_ori * 0.5
+
+        x_mask_left = torch.mul(self.mask_map_r(x_left).repeat(1, 3, 1, 1), x_left)
+        x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
+
+        out_ir = self.bottleneck1(x_mask_right + x_right_ori)
+        out_rgb = self.bottleneck2(x_mask_left + x_left_ori)
+
+        gate = self.gate(torch.cat([out_rgb, out_ir], 1))
+        self.last_gate = gate.detach()
+        out_rgb = out_rgb * gate
+        out_ir = out_ir * (1.0 - gate)
+
+        return self.se(torch.cat([out_rgb, out_ir], 1))
+
 class ScaledDotProductAttentionOnly(nn.Module):
     ''' Scaled Dot-Product Attention '''
 
@@ -487,6 +528,40 @@ class AttentionModel(nn.Module):
         return attention_map,output
 
 
+class FEM(nn.Module):
+    """
+    FFCA-inspired feature enhancement module for small-object detection.
+
+    This is not a paper-exact reproduction. It enriches the final small-object
+    branch with multi-scale local/context features and a lightweight channel
+    attention gate, while preserving a residual path when channel sizes match.
+    """
+
+    def __init__(self, c1, c2=None, e=0.5):
+        super().__init__()
+        c2 = c1 if c2 is None else c2
+        hidden = max(16, int(c2 * e))
+        self.reduce = Conv(c1, hidden, 1, 1)
+        self.branch3 = Conv(hidden, hidden, 3, 1)
+        self.branch5 = Conv(hidden, hidden, 5, 1)
+        self.branch_context = nn.Sequential(
+            nn.MaxPool2d(kernel_size=5, stride=1, padding=2),
+            Conv(hidden, hidden, 3, 1),
+        )
+        self.fuse = Conv(hidden * 3, c2, 1, 1)
+        self.se = SE_Block(c2, 16)
+        self.use_shortcut = c1 == c2
+
+    def forward(self, x):
+        base = self.reduce(x)
+        fused = torch.cat(
+            [self.branch3(base), self.branch5(base), self.branch_context(base)],
+            dim=1,
+        )
+        out = self.se(self.fuse(fused))
+        return x + out if self.use_shortcut else out
+
+
 def position(H, W, is_cuda=True):
     if is_cuda:
         loc_w = torch.linspace(-1.0, 1.0, W).cuda(0).unsqueeze(0).repeat(H, 1)
@@ -518,13 +593,6 @@ class Conv_withoutBN(nn.Module):
         raise NotImplementedError("Conv_withoutBN is a stub and should not be called at runtime")
 
 # Stub for FEM
-class FEM(nn.Module):
-    """Stub so that `from models.common import FEM` succeeds."""
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-    def forward(self, x):
-        raise NotImplementedError("FEM is a stub and should not be called at runtime")
-
 # Stub for C2f
 class C2f(nn.Module):
     """Stub so that `from models.common import C2f` succeeds."""

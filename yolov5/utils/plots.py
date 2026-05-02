@@ -398,6 +398,8 @@ def plot_val_study(file="", dir="", x=None):
 @TryExcept()  # known issue https://github.com/ultralytics/yolov5/issues/5395
 def plot_labels(labels, names=(), save_dir=Path("")):
     """Plots dataset labels, saving correlogram and label images, handles classes, and visualizes bounding boxes."""
+    if isinstance(names, list):
+        names = dict(enumerate(names))
     LOGGER.info(f"Plotting labels to {save_dir / 'labels.jpg'}... ")
     c, b = labels[:, 0], labels[:, 1:].transpose()  # classes, boxes
     nc = int(c.max() + 1)  # number of classes
@@ -502,30 +504,78 @@ def plot_evolve(evolve_csv="path/to/evolve.csv"):
     print(f"Saved {f}")
 
 
-def plot_results(file="path/to/results.csv", dir=""):
+def plot_results(file="path/to/results.csv", dir="", save_dir=None):
     """
-    Plots training results from a 'results.csv' file; accepts file path and directory as arguments.
+    Plots training results from YOLO result files.
 
-    Example: from utils.plots import *; plot_results('path/to/results.csv')
+    Supports both newer ``results.csv`` files and this repo's legacy
+    whitespace-delimited ``results.txt`` format.
     """
-    save_dir = Path(file).parent if file else Path(dir)
+    if save_dir is not None and not dir:
+        dir = save_dir
+    save_dir = Path(file).parent if file and file != "path/to/results.csv" else Path(dir)
     fig, ax = plt.subplots(2, 5, figsize=(12, 6), tight_layout=True)
     ax = ax.ravel()
     files = list(save_dir.glob("results*.csv"))
-    assert len(files), f"No results.csv files found in {save_dir.resolve()}, nothing to plot."
+    legacy_txt = not files
+    if legacy_txt:
+        files = list(save_dir.glob("results*.txt"))
+    assert len(files), f"No results files found in {save_dir.resolve()}, nothing to plot."
     for f in files:
         try:
-            data = pd.read_csv(f)
-            s = [x.strip() for x in data.columns]
-            x = data.values[:, 0]
-            for i, j in enumerate([1, 2, 3, 4, 5, 8, 9, 10, 6, 7]):
-                y = data.values[:, j].astype("float")
-                # y[y == 0] = np.nan  # don't show zero values
-                ax[i].plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=8)  # actual results
-                ax[i].plot(x, gaussian_filter1d(y, sigma=3), ":", label="smooth", linewidth=2)  # smoothing line
-                ax[i].set_title(s[j], fontsize=12)
-                # if j in [8, 9, 10]:  # share train and val loss y axes
-                #     ax[i].get_shared_y_axes().join(ax[i], ax[i - 5])
+            if legacy_txt:
+                rows = []
+                for raw in f.read_text().splitlines():
+                    parts = raw.split()
+                    if len(parts) != 15 or "/" not in parts[0]:
+                        continue
+                    rows.append(
+                        {
+                            "epoch": float(parts[0].split("/")[0]),
+                            "gpu_mem": float(parts[1].rstrip("G")),
+                            "train/box_loss": float(parts[2]),
+                            "train/obj_loss": float(parts[3]),
+                            "train/cls_loss": float(parts[4]),
+                            "train/total_loss": float(parts[5]),
+                            "labels": float(parts[6]),
+                            "img_size": float(parts[7]),
+                            "metrics/precision": float(parts[8]),
+                            "metrics/recall": float(parts[9]),
+                            "metrics/mAP_0.5": float(parts[10]),
+                            "metrics/mAP_0.5:0.95": float(parts[11]),
+                            "val/box_loss": float(parts[12]),
+                            "val/obj_loss": float(parts[13]),
+                            "val/cls_loss": float(parts[14]),
+                        }
+                    )
+                data = pd.DataFrame(rows)
+                plot_columns = [
+                    "train/box_loss",
+                    "train/obj_loss",
+                    "train/cls_loss",
+                    "train/total_loss",
+                    "metrics/precision",
+                    "metrics/recall",
+                    "metrics/mAP_0.5",
+                    "metrics/mAP_0.5:0.95",
+                    "val/box_loss",
+                    "val/obj_loss",
+                ]
+                x = data["epoch"].astype("float").to_numpy()
+                for i, column in enumerate(plot_columns):
+                    y = data[column].astype("float").to_numpy()
+                    ax[i].plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=8)
+                    ax[i].plot(x, gaussian_filter1d(y, sigma=3), ":", label="smooth", linewidth=2)
+                    ax[i].set_title(column, fontsize=12)
+            else:
+                data = pd.read_csv(f)
+                s = [x.strip() for x in data.columns]
+                x = data.values[:, 0]
+                for i, j in enumerate([1, 2, 3, 4, 5, 8, 9, 10, 6, 7]):
+                    y = data.values[:, j].astype("float")
+                    ax[i].plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=8)
+                    ax[i].plot(x, gaussian_filter1d(y, sigma=3), ":", label="smooth", linewidth=2)
+                    ax[i].set_title(s[j], fontsize=12)
         except Exception as e:
             LOGGER.info(f"Warning: Plotting error for {f}: {e}")
     ax[1].legend()

@@ -25,7 +25,7 @@ from tqdm import tqdm
 # import test_up  # import test.py to get mAP after each epoch
 import test
 from models.experimental import attempt_load
-from yolov5.models.yolo1 import Model #zjq
+from models.yolo1 import Model #zjq
 from utils.autoanchor import check_anchors
 
 
@@ -74,7 +74,11 @@ def train(hyp, opt, device, tb_writer=None):
     loggers = {'wandb': None}  # loggers dict
     if rank in [-1, 0]:
         opt.hyp = hyp  # add hyperparameters
-        run_id = torch.load(weights).get('wandb_id') if weights.endswith('.pt') and os.path.isfile(weights) else None
+        run_id = (
+            torch.load(weights, map_location='cpu', weights_only=False).get('wandb_id')
+            if weights.endswith('.pt') and os.path.isfile(weights)
+            else None
+        )
         wandb_logger = WandbLogger(opt, Path(opt.save_dir).stem, run_id, data_dict)
         loggers['wandb'] = wandb_logger.wandb
         data_dict = wandb_logger.data_dict
@@ -91,7 +95,7 @@ def train(hyp, opt, device, tb_writer=None):
     if pretrained:
         with torch_distributed_zero_first(rank):
             attempt_download(weights)  # download if not found locally
-        ckpt = torch.load(weights, map_location=device)  # load checkpoint
+        ckpt = torch.load(weights, map_location=device, weights_only=False)  # load checkpoint
         model = Model(opt.cfg or ckpt['model'].yaml,input_mode = opt.input_mode,ch_steam=opt.ch_steam, ch=opt.ch, nc=nc, anchors=hyp.get('anchors'),config=None,sr=opt.super,factor=down_factor).to(device)  # create
         exclude = ['anchor'] if (opt.cfg or hyp.get('anchors')) and not opt.resume else []  # exclude keys
         state_dict = ckpt['model'].float().state_dict()  # to FP32
@@ -205,7 +209,7 @@ def train(hyp, opt, device, tb_writer=None):
     # Trainloader
     #if not opt.super and not opt.super_attention:
     # if not opt.data.endswith('SRvedai.yaml'):
-    if opt.data.endswith('vedai.yaml') or opt.data.endswith('SRvedai.yaml'):
+    if 'vedai' in Path(opt.data).name.lower():
         from utils.datasets import create_dataloader_sr as create_dataloader
     else:
         from utils.datasets_single import create_dataloader
@@ -243,7 +247,7 @@ def train(hyp, opt, device, tb_writer=None):
             # cf = torch.bincount(c.long(), minlength=nc) + 1.  # frequency
             # model._initialize_biases(cf.to(device))
             if plots:
-                plot_labels(labels, names, save_dir, loggers)
+                plot_labels(labels, names, save_dir)
                 if tb_writer:
                     tb_writer.add_histogram('classes', c, 0)
 
@@ -389,7 +393,7 @@ def train(hyp, opt, device, tb_writer=None):
                 # elif not opt.super and not opt.super_attention and opt.attention:
                 #     pred, attention_mask,_ = model(imgs,irs,opt.input_mode)
                 else:
-                    pred,_ = model(imgs,irs,opt.input_mode)
+                    pred, output_sr, _ = model(imgs,irs,opt.input_mode)
                 # t1 = time.time()
                 # print(t1-t0)
                 # Replace your existing compute_loss unpacking block with this:
@@ -595,11 +599,11 @@ def train(hyp, opt, device, tb_writer=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     #############################
-    parser.add_argument('--weights', type=str, default='', help='initial weights path')
-    parser.add_argument('--cfg', type=str,default='models/SRyolo_MF.yaml', help='model.yaml path') #yolov5s
+    parser.add_argument('--weights', type=str, default='yolov5m.pt', help='initial weights path')
+    parser.add_argument('--cfg', type=str,default='yolov5/models/MyYolo.yaml', help='model.yaml path') #yolov5s
     parser.add_argument('--super', action='store_true', help='super resolution')
-    parser.add_argument('--data', type=str,default='data/SRvedai.yaml', help='data.yaml path')
-    parser.add_argument('--hyp', type=str, default='data/hyp.scratch.yaml', help='hyperparameters path')
+    parser.add_argument('--data', type=str,default='yolov5/data/vedai_phase1.yaml', help='data.yaml path')
+    parser.add_argument('--hyp', type=str, default='yolov5/data/hyp.scratch.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--ch_steam', type=int, default=3)
     parser.add_argument('--ch', type=int,default=64, help = '3 4 16 midfusion1:64 midfusion2,3:128 midfusion4:256') 

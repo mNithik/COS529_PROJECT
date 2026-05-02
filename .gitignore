@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+
+data/phase1_vedai/
+runs/
+
+yolov5/**/*.cache
+yolov5/**/__pycache__/
+scripts/__pycache__/

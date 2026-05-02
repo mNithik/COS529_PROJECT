@@ -136,8 +136,21 @@ class Model(nn.Module):
     
     def forward(self, x, ir=torch.randn(1,3,512,512), input_mode='RGB+IR', augment=False, profile=False):
         # input_mode = 'RGB+IR' #IRRGB
-        if input_mode=='RGB':
-            ir=x
+        def build_steam(rgb_tensor, ir_tensor, mode):
+            if mode == 'RGB+IR+fusion':
+                steam1 = self.forward_once(rgb_tensor, 'steam', profile)
+                steam2 = self.forward_once(ir_tensor, 'steam', profile)
+                return torch.cat([steam1, steam2], 1)
+            if mode == 'RGB+IR':
+                return torch.cat([rgb_tensor, ir_tensor[:, 0:1, :, :]], 1)
+            if mode == 'RGB':
+                return [rgb_tensor, torch.zeros_like(ir_tensor[:, 0:1, :, :])]
+            if mode == 'IR':
+                return [torch.zeros_like(rgb_tensor), ir_tensor[:, 0:1, :, :]]
+            if mode == 'RGB+IR+MF':
+                return [rgb_tensor, ir_tensor[:, 0:1, :, :]]
+            return [rgb_tensor, ir_tensor[:, 0:1, :, :]]
+
         if augment:
             img_size = x.shape[-2:]  # height, width
             s = [1, 0.83, 0.67]  # scales
@@ -146,18 +159,7 @@ class Model(nn.Module):
             for si, fi in zip(s, f):
                 xi = scale_img(x.flip(fi) if fi else x, si, gs=int(self.stride.max()))
                 iri = scale_img(ir.flip(fi) if fi else ir, si, gs=int(self.stride.max()))
-                if input_mode =='RGB+IR+fusion':
-                    steam1 = self.forward_once(x,'steam',profile)
-                    steam2 = self.forward_once(ir,'steam',profile)
-                    steam = torch.cat([steam1,steam2],1)
-                if input_mode == 'RGB+IR':
-                    steam = torch.cat([xi,iri[:,0:1,:,:]],1)
-                if input_mode == 'RGB':
-                    steam = xi
-                if input_mode == 'IR':
-                    steam = iri#steam = iri[:,0:1,:,:]
-                if input_mode == 'RGB+IR+MF':
-                    steam = [x,ir[:,0:1,:,:]] #[:,0:1,:,:]
+                steam = build_steam(xi, iri, input_mode)
                 yi = self.forward_once(steam,'yolo')[0]  # forward
                 # yi = self.forward_once(xi)[0]  # forward
                 # cv2.imwrite('img%g.jpg' % s, 255 * xi[0].numpy().transpose((1, 2, 0))[:, :, ::-1])  # save
@@ -169,19 +171,7 @@ class Model(nn.Module):
                 y.append(yi)
             return torch.cat(y, 1), None  # augmented inference, train
         else:
-            if input_mode =='RGB+IR+fusion':
-                steam1 = self.forward_once(x,'steam',profile)
-                steam2 = self.forward_once(ir,'steam',profile)
-                steam = torch.cat([steam1,steam2],1)
-                # sio.savemat('features/output.mat', mdict={'data':steam.cpu().numpy()})
-            if input_mode == 'RGB+IR':
-                steam = torch.cat([x,ir[:,0:1,:,:]],1)
-            if input_mode == 'RGB':
-                steam = x
-            if input_mode == 'IR':
-                steam = ir#steam = ir[:,0:1,:,:]
-            if input_mode == 'RGB+IR+MF':
-                steam = [x,ir[:,0:1,:,:]] #[:,0:1,:,:]
+            steam = build_steam(x, ir, input_mode)
                 
             
             self.training |= self.export
@@ -330,7 +320,7 @@ def parse_model(d, string, ch,config):  # model_dict, input_channels(3)
                 pass
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
-        if m in [Conv, ACmix, Bottleneck, SPP, DWConv, MixConv2d, Focus, CrossConv, BottleneckCSP, BottleneckCSP2, SPPCSP, C3, AttentionModel]:
+        if m in [Conv, ACmix, Bottleneck, SPP, DWConv, MixConv2d, Focus, CrossConv, BottleneckCSP, BottleneckCSP2, SPPCSP, C3, AttentionModel, FEM]:
             c1, c2 = ch[f], args[0]
 
             # Normal

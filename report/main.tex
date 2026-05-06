@@ -1,0 +1,164 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\graphicspath{{../runs/train/phase2_gate1/}{../runs/analysis/phase2_gate1_maps/}}
+
+\title{Type-B Topic 8: Deep Neural Network for Multimodal Aerial Vehicle Detection}
+
+\author{Nithik}
+\affiliation{%
+  \institution{Advanced Computer Vision Project}
+  \country{United States}
+}
+
+\begin{document}
+
+\begin{abstract}
+This project studies multimodal aerial vehicle detection on the VEDAI dataset using RGB and infrared imagery. Starting from a custom YOLO-based multimodal baseline, the work first established a reproducible training and evaluation pipeline and then investigated two targeted improvements: an FFCA-inspired feature enhancement module and an adaptive modality gating mechanism. Experiments show that multimodal fusion outperforms RGB-only and IR-only detection, and that the adaptive gating model achieves the strongest overall result, reaching a final mAP@0.5 of 0.8792 and mAP@0.5:0.95 of 0.5181. The main takeaway is that adaptive RGB-IR fusion is more effective in this setup than either single-modality detection or simply stacking more architectural complexity.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+Aerial vehicle detection is an important transportation-domain computer vision problem with applications in traffic analysis, surveillance, urban monitoring, and remote sensing. Compared with standard ground-level object detection, aerial imagery introduces additional challenges because target objects often occupy very few pixels, appear under severe scale variation, and are embedded in visually complex backgrounds. These issues make small-object detection especially difficult.
+
+Multimodal sensing provides a natural way to improve robustness in this setting. RGB imagery contains rich texture and structural detail, while infrared imagery can highlight thermal and contrast cues that are not always obvious in color imagery alone. This motivates a multimodal approach that learns how to use both sources effectively instead of relying on a single visual modality.
+
+In this project, aerial vehicle detection is formulated as a Type-B domain application of deep neural networks. The work compares RGB-only, IR-only, and multimodal detection, then evaluates two targeted improvements on top of the multimodal baseline: a feature enhancement module motivated by small-object remote-sensing literature and an adaptive modality gating module that learns spatially varying RGB-IR fusion weights.
+
+\section{Related Work}
+YOLO-based object detectors remain a strong baseline for real-time detection because they combine competitive accuracy with efficient inference. The YOLOv5 family is especially practical for custom training pipelines and has been widely adopted for domain-specific detection tasks, including aerial imagery and small-object scenarios~\cite{yolov5}.
+
+Small-object detection in remote sensing has motivated a number of architectural modifications designed to enhance weak object features and improve multi-scale reasoning. In particular, FFCA-YOLO emphasizes feature enhancement, feature fusion, and spatial context modeling for small objects in aerial imagery~\cite{ffcayolo}. That line of work directly motivates the feature enhancement experiment in this project.
+
+Multimodal visible-infrared detection has also received increasing attention. Prior work shows that combining RGB and thermal or infrared cues can improve robustness in cluttered or low-contrast scenes, but effective fusion remains a key challenge~\cite{oafa2024,esm2024}. Recent work continues to explore adaptive and task-aware fusion strategies instead of fixed combination rules~\cite{tafyolo2025}. This project follows that direction by testing a lightweight adaptive gating mechanism that learns when to emphasize RGB or IR features spatially.
+
+\section{Data Description}
+The experiments use the VEDAI (Vehicle Detection in Aerial Imagery) dataset~\cite{vedai}. VEDAI contains paired RGB and infrared aerial imagery with vehicle annotations. In the current project pipeline, each sample is represented by an RGB image with suffix \texttt{\_co.png} and a matching infrared image with suffix \texttt{\_ir.png}. The Phase~1 and Phase~2 experiments use 512$\times$512 inputs for evaluation and 1024-sized training inputs in the custom pipeline.
+
+For reproducibility, the dataset setup was standardized through portable manifest files:
+\begin{itemize}[leftmargin=*]
+    \item \texttt{fold01\_train.txt}
+    \item \texttt{fold02\_val.txt}
+    \item \texttt{fold03\_test.txt}
+\end{itemize}
+
+Although the raw source labels contain multiple vehicle subclasses, the current experimental pipeline uses a sanitized single-class setup in which all valid vehicle boxes are mapped to class~0 (\texttt{vehicle}). This design simplifies the comparison between modalities and fusion strategies while keeping the domain problem focused on aerial vehicle detection.
+
+\section{Method}
+\subsection{Baseline Multimodal Model}
+The baseline model is a custom YOLO-based multimodal detector built on top of a modified YOLOv5 codebase. The baseline uses an early multimodal fusion block, denoted \texttt{MF}, to combine RGB and IR information before the backbone. Detection is then performed on the final P3 small-object branch, which is appropriate for the tiny vehicle instances present in VEDAI.
+
+\subsection{FFCA-Inspired Feature Enhancement}
+To improve small-object representation quality, a lightweight feature enhancement module (FEM) was added to the final small-object branch. This module is inspired by FFCA-style small-object enhancement ideas, but it is not intended as a paper-exact reimplementation. Instead, it serves as a controlled experiment to test whether strengthened local and contextual features improve performance in this multimodal aerial setting.
+
+\subsection{Adaptive Modality Gating}
+The main proposed improvement is adaptive modality gating. Instead of always combining RGB and IR features with a fixed fusion pattern, the gating module learns a spatial weighting map that emphasizes RGB features in some regions and IR features in others. Conceptually, this acts as a learned per-location trust mechanism for the two modalities. The model variant using this mechanism is referred to as the \emph{Gate} model.
+
+\subsection{Combined FEM + Gate Variant}
+To test whether the two improvements are complementary, a combined model was also trained using both the adaptive gating block and the FEM block. This ablation is important because it helps determine whether the gains from the separate improvements stack or whether they are partly redundant.
+
+\section{Experimental Procedure}
+All experiments were run through the standardized WSL training scripts added during the reproducibility cleanup phase. The core comparison proceeded in two stages:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Modality study}: compare RGB-only, IR-only, and multimodal RGB+IR+MF detection.
+    \item \textbf{Architecture study}: compare the multimodal baseline against FEM, Gate, and FEM+Gate variants.
+\end{enumerate}
+
+The main evaluation metrics are precision, recall, mAP@0.5, and mAP@0.5:0.95. These metrics are recorded from the saved \texttt{results.txt} logs for each canonical run folder.
+
+\section{Results and Ablations}
+\subsection{Modality Comparison}
+Table~\ref{tab:modality} shows that multimodal fusion clearly outperforms both single-modality baselines.
+
+\begin{table}[h]
+    \centering
+    \caption{Phase 1 modality comparison on the sanitized single-class VEDAI setup.}
+    \label{tab:modality}
+    \begin{tabular}{lcccc}
+        \toprule
+        Mode & Precision & Recall & mAP@0.5 & mAP@0.5:0.95 \\
+        \midrule
+        RGB-only & 0.8198 & 0.7677 & 0.8564 & 0.4991 \\
+        IR-only & 0.8235 & 0.7018 & 0.8099 & 0.4642 \\
+        RGB+IR+MF & 0.8328 & 0.7872 & 0.8696 & 0.5087 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The RGB-only model is stronger than the IR-only model, but the multimodal baseline exceeds both in recall and mAP. This confirms that RGB and IR provide complementary information for aerial vehicle detection.
+
+\subsection{Architecture Comparison}
+Table~\ref{tab:arch} summarizes the main architecture ablations on top of the multimodal baseline.
+
+\begin{table}[h]
+    \centering
+    \caption{Architecture comparison on the multimodal RGB+IR setup.}
+    \label{tab:arch}
+    \begin{tabular}{lcccc}
+        \toprule
+        Model & Precision & Recall & mAP@0.5 & mAP@0.5:0.95 \\
+        \midrule
+        Baseline & 0.8328 & 0.7872 & 0.8696 & 0.5087 \\
+        + FEM & 0.8379 & 0.7946 & 0.8766 & 0.5150 \\
+        + Gate & 0.8585 & 0.7866 & 0.8792 & 0.5181 \\
+        + FEM + Gate & 0.8408 & 0.7756 & 0.8701 & 0.5126 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The FEM variant improves over the baseline, showing that feature enhancement is beneficial. However, the adaptive gating model performs best overall, suggesting that learning where to trust RGB versus IR is more effective than fixed fusion or simply strengthening local features. Interestingly, the combined FEM+Gate model does not outperform the Gate-only model, indicating that additional complexity is not automatically beneficial in this setup.
+
+\subsection{Training Dynamics}
+Figure~\ref{fig:training} shows the saved training summary from the best model, \texttt{phase2\_gate1}. The loss curves decrease steadily while precision, recall, and mAP improve over training, which is consistent with stable convergence.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{results.png}
+    \caption{Training curves for the adaptive gating model (\texttt{phase2\_gate1}).}
+    \label{fig:training}
+\end{figure}
+
+\subsection{Gate Visualization}
+To interpret the gating mechanism, gate maps were exported from the saved \texttt{phase2\_gate1} checkpoint. Representative examples are shown in Figure~\ref{fig:gatevis}. Each panel shows the RGB image, the IR image, the learned gate map, and the RGB overlay.
+
+\begin{figure*}[t]
+    \centering
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\linewidth]{00000010_gate.png}
+        \caption{Industrial scene}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\linewidth]{00000025_gate.png}
+        \caption{Parking-lot scene}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\linewidth]{00000086_gate.png}
+        \caption{Residential scene}
+    \end{subfigure}
+    \caption{Adaptive gate-map visualizations from the best gating model.}
+    \label{fig:gatevis}
+\end{figure*}
+
+These visualizations suggest that the learned gate is not random. Strong responses tend to appear around roads, building boundaries, vehicles, and other structured man-made regions, while large low-texture background regions are less emphasized. This supports the interpretation that the model is learning spatially varying modality preference rather than applying uniform fusion everywhere.
+
+\section{Discussion}
+The experiments support three main observations. First, multimodal RGB-IR detection is better than single-modality detection for this aerial vehicle task. Second, adaptive fusion is the strongest individual improvement tested in the project. Third, adding more modules is not always beneficial: the FEM+Gate combination did not exceed Gate alone, which suggests some redundancy or over-parameterization for the current setup.
+
+This outcome is valuable because it identifies a simple and interpretable improvement rather than encouraging uncontrolled architectural growth. In practical terms, the adaptive gating result is strong enough to serve as the final model choice for the project report.
+
+\section{Conclusion}
+This project presented a deep neural network approach to multimodal aerial vehicle detection on the VEDAI dataset. After establishing a reproducible multimodal baseline, the work compared RGB-only, IR-only, and multimodal detection, then evaluated two targeted improvements: FFCA-inspired feature enhancement and adaptive modality gating. The results show that multimodal fusion improves over single-modality detection, and that adaptive gating provides the best final performance. The strongest final model is the gating variant, which reaches mAP@0.5 of 0.8792 and mAP@0.5:0.95 of 0.5181. Overall, the project shows that adaptive multimodal fusion is a promising direction for small-object aerial vehicle detection.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+
+\end{document}

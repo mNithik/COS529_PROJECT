@@ -1,6 +1,6 @@
 # Usage Guide - Vehicle Detection in Aerial Imagery
 
-This guide provides comprehensive examples and instructions for using the COS529 Advanced Computer Vision project for multi-modal vehicle detection.
+This guide provides comprehensive examples and instructions for using the multimodal vehicle detection project.
 
 ## 🎯 Overview
 

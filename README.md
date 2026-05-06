@@ -1,4 +1,4 @@
-# COS529 Advanced Computer Vision - Vehicle Detection in Aerial Imagery
+# Multimodal Aerial Vehicle Detection
 
 Multimodal aerial vehicle detection project built around RGB-IR VEDAI experiments and a custom YOLO-based fusion model.
 
@@ -14,10 +14,10 @@ Current focus areas:
 
 ## Additional Docs
 
-- [SETUP.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/SETUP.md)
-- [USAGE.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/USAGE.md)
-- [RESULTS.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/RESULTS.md)
-- [README_COS529.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/yolov5/README_COS529.md)
+- [SETUP.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/SETUP.md)
+- [USAGE.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/USAGE.md)
+- [RESULTS.md](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/RESULTS.md)
+- [YOLOv5 Project Notes](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/yolov5/README_Project.md)
 
 ## Phase 1
 
@@ -25,11 +25,11 @@ Phase 1 is the reproducibility cleanup pass. The goal is to make the multimodal 
 
 ### What was standardized
 
-- Portable VEDAI manifest generation in [prepare_vedai_manifests.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/prepare_vedai_manifests.py)
-- Sanitized single-class Phase 1 dataset generation in [prepare_phase1_dataset.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/prepare_phase1_dataset.py)
-- WSL setup script in [setup_wsl.sh](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/setup_wsl.sh)
-- Canonical Phase 1 train script in [run_phase1_train.sh](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/run_phase1_train.sh)
-- Canonical dataset YAML in [vedai_phase1.yaml](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/yolov5/data/vedai_phase1.yaml)
+- Portable VEDAI manifest generation in [prepare_vedai_manifests.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/scripts/prepare_vedai_manifests.py)
+- Sanitized single-class Phase 1 dataset generation in [prepare_phase1_dataset.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/scripts/prepare_phase1_dataset.py)
+- WSL setup script in [setup_wsl.sh](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/scripts/setup_wsl.sh)
+- Canonical Phase 1 train script in [run_phase1_train.sh](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/scripts/run_phase1_train.sh)
+- Canonical dataset YAML in [vedai_phase1.yaml](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/yolov5/data/vedai_phase1.yaml)
 - Dataset loader path resolution no longer depends on old Colab absolute paths
 
 ### WSL quick start
@@ -104,7 +104,7 @@ bash scripts/run_phase2_fem_gate.sh
 The gate-analysis utility exports RGB / IR / gate-map / overlay panels from the saved adaptive-gating checkpoint.
 
 Script:
-- [visualize_gate_maps.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/scripts/visualize_gate_maps.py)
+- [visualize_gate_maps.py](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/scripts/visualize_gate_maps.py)
 
 Example command:
 
@@ -119,7 +119,7 @@ Default output directory:
 ## Current Best Model
 
 The strongest current result is:
-- [phase2_gate1](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/runs/train/phase2_gate1)
+- [phase2_gate1](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/runs/train/phase2_gate1)
 
 Metrics:
 - Precision: `0.8585`
@@ -129,4 +129,4 @@ Metrics:
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](/C:/Users/nithi/OneDrive/Documents/cvprinceton/COS529_PROJECT/LICENSE).
+This project is licensed under the MIT License. See [LICENSE](/C:/Users/nithi/OneDrive/Documents/cvprinceton/iot%20cs530/LICENSE).

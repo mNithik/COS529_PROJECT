@@ -1,6 +1,6 @@
 # Setup Guide - Vehicle Detection in Aerial Imagery
 
-This guide provides detailed instructions for setting up and running the COS529 Advanced Computer Vision project for multi-modal vehicle detection in aerial imagery.
+This guide provides detailed instructions for setting up and running the multimodal vehicle detection project for aerial imagery.
 
 ## 📋 Prerequisites
 
@@ -23,7 +23,7 @@ This guide provides detailed instructions for setting up and running the COS529 
 ```bash
 # Clone the project repository
 git clone <your-repository-url>
-cd COS529_PROJECT
+cd multimodal-aerial-vehicle-detection
 
 # Verify the project structure
 ls -la
@@ -34,8 +34,8 @@ ls -la
 #### Option A: Using Conda (Recommended)
 ```bash
 # Create a new conda environment
-conda create -n cos529-cv python=3.8
-conda activate cos529-cv
+conda create -n aerial-vehicle-det python=3.8
+conda activate aerial-vehicle-det
 
 # Install PyTorch with CUDA support
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
@@ -47,8 +47,8 @@ python -c "import torch; print(torch.cuda.is_available())"
 #### Option B: Using Virtual Environment
 ```bash
 # Create virtual environment
-python -m venv cos529_env
-source cos529_env/bin/activate  # On Windows: cos529_env\Scripts\activate
+python -m venv aerial_vehicle_env
+source aerial_vehicle_env/bin/activate  # On Windows: aerial_vehicle_env\Scripts\activate
 
 # Upgrade pip
 pip install --upgrade pip
@@ -86,7 +86,7 @@ python -c "import torch; print(f'CUDA device count: {torch.cuda.device_count()}'
 Ensure your dataset is organized as follows:
 
 ```
-COS529_PROJECT/
+project-root/
 ├── data/
 │   ├── VEDAI/
 │   │   ├── images/           # Original 512x512 images
@@ -119,7 +119,7 @@ nano yolov5/data/vedai9.yaml
 **Example configuration update:**
 ```yaml
 # Change this line in each config file
-path: /your/path/to/COS529_PROJECT/data/VEDAI
+path: /your/path/to/project-root/data/VEDAI
 ```
 
 ### Step 3: Convert Annotations (If Needed)
@@ -183,8 +183,8 @@ ls -la yolov5/data/vedai_car.yaml
 #### Dependency Conflicts
 ```bash
 # Create fresh environment
-conda create -n cos529-fresh python=3.8
-conda activate cos529-fresh
+conda create -n aerial-vehicle-fresh python=3.8
+conda activate aerial-vehicle-fresh
 pip install -r requirements.txt
 ```
 

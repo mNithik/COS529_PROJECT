@@ -1,6 +1,6 @@
-# YOLOv5 for COS529 Vehicle Detection Project
+# YOLOv5 for Multimodal Aerial Vehicle Detection
 
-This directory contains the YOLOv5 implementation specifically configured for the COS529 Advanced Computer Vision project on multi-modal vehicle detection in aerial imagery.
+This directory contains the YOLOv5 implementation specifically configured for the multimodal aerial vehicle detection project.
 
 ## 🎯 Project-Specific Configuration
 
